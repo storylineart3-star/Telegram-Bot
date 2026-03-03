@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storyline Art Studio</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: sans-serif; background: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); margin: 0; padding: 15px; }
+        .novel-card { background: var(--tg-theme-secondary-bg-color); padding: 15px; border-radius: 10px; margin-bottom: 10px; cursor: pointer; border: 1px solid #ccc; }
+        .novel-title { font-weight: bold; font-size: 1.1em; }
+        h1 { font-size: 1.5em; text-align: center; }
+        .back-btn { display: none; margin-bottom: 10px; cursor: pointer; color: var(--tg-theme-link-color); }
+    </style>
+</head>
+<body>
+    <div id="back-btn" class="back-btn" onclick="loadNovels()">⬅ Back to Novels</div>
+    <h1 id="main-title">All Novels</h1>
+    <div id="content">Loading novels...</div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Make the app full screen
+
+        const API_URL = "https://storylineartstudio.in/wp-json/wp/v2";
+        const PARENT_CAT_ID = 123; // REPLACE with your 'Novels' Category ID
+
+        // Function to fetch and show Novel categories
+        async function loadNovels() {
+            document.getElementById('back-btn').style.display = 'none';
+            document.getElementById('main-title').innerText = "All Novels";
+            const response = await fetch(`${API_URL}/categories?parent=${PARENT_CAT_ID}`);
+            const categories = await response.json();
+            
+            let html = '';
+            categories.forEach(cat => {
+                html += `<div class="novel-card" onclick="loadChapters(${cat.id}, '${cat.name}')">
+                            <div class="novel-title">${cat.name}</div>
+                            <small>${cat.count} Chapters</small>
+                         </div>`;
+            });
+            document.getElementById('content').innerHTML = html;
+        }
+
+        // Function to fetch and show Chapters for a specific novel
+        async function loadChapters(catId, name) {
+            document.getElementById('back-btn').style.display = 'block';
+            document.getElementById('main-title').innerText = name;
+            document.getElementById('content').innerHTML = "Loading chapters...";
+            
+            const response = await fetch(`${API_URL}/posts?categories=${catId}&per_page=20`);
+            const posts = await response.json();
+            
+            let html = '';
+            posts.forEach(post => {
+                html += `<div class="novel-card" onclick="window.open('${post.link}', '_blank')">
+                            <div class="novel-title">${post.title.rendered}</div>
+                         </div>`;
+            });
+            document.getElementById('content').innerHTML = html;
+        }
+
+        loadNovels(); // Initial load
+    </script>
+</body>
+</html>
