@@ -3,249 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Storyline Art Studio Reader</title>
+    <title>Storyline Art Studio</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root {
-            /* Adapts to Telegram Theme */
-            --bg: var(--tg-theme-bg-color, #f0f2f5);
-            --text: var(--tg-theme-text-color, #1c1e21);
-            --secondary-bg: var(--tg-theme-secondary-bg-color, #ffffff);
-            --hint: var(--tg-theme-hint-color, #8a8d91);
-            --link: var(--tg-theme-link-color, #1877f2);
-            --border: rgba(0,0,0,0.05);
-        }
-        
-        @media (prefers-color-scheme: dark) {
-            :root { --border: rgba(255,255,255,0.05); }
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 0;
-            -webkit-user-select: none;
-        }
-
-        /* Header UI */
-        .header {
-            position: sticky;
-            top: 0;
-            background: var(--secondary-bg);
-            padding: 15px;
-            display: flex;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-            z-index: 100;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .back-btn {
-            background: none; border: none; font-size: 24px;
-            color: var(--link); cursor: pointer; display: none; margin-right: 15px;
-        }
-        .header-title { font-size: 18px; font-weight: 600; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        /* Novel List View */
-        .container { padding: 15px; }
-        .novel-list { display: flex; flex-direction: column; gap: 12px; }
-        .novel-card {
-            background: var(--secondary-bg);
-            border-radius: 12px;
-            overflow: hidden;
-            display: flex;
-            cursor: pointer;
-            box-shadow: 0 1px 3px var(--border);
-            transition: transform 0.1s;
-        }
-        .novel-card:active { transform: scale(0.98); }
-        .novel-cover { width: 90px; height: 130px; object-fit: cover; background: var(--bg); }
-        .novel-info { padding: 12px; display: flex; flex-direction: column; justify-content: center; flex: 1; }
-        .novel-title { font-size: 16px; font-weight: bold; margin-bottom: 6px; }
-        .novel-meta { font-size: 13px; color: var(--hint); }
-
-        /* Chapter List View */
-        .chapter-list { display: flex; flex-direction: column; gap: 2px; }
-        .chapter-item {
-            background: var(--secondary-bg);
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-        }
-        .chapter-item:active { background: var(--bg); }
-        .chapter-number {
-            font-size: 14px; font-weight: bold; color: var(--text);
-            width: 50px; flex-shrink: 0;
-        }
-        .chapter-title {
-            font-size: 14px; color: var(--text); flex: 1;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-
-        #loading { text-align: center; padding: 40px; color: var(--hint); font-size: 14px; }
+        :root { --bg: #0f1014; --card: #1a1c22; --text: #ffffff; --accent: #ff3b5c; --hint: #8e8e93; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 30px; }
+        .header { position: sticky; top: 0; background: var(--bg); padding: 15px; display: flex; align-items: center; border-bottom: 1px solid #222; z-index: 10; }
+        .back-btn { background: none; border: none; font-size: 24px; color: var(--accent); display: none; margin-right: 15px; cursor: pointer; }
+        .header-title { font-size: 18px; font-weight: bold; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+        .container { padding: 12px; }
+        .novel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .novel-card { background: var(--card); border-radius: 12px; overflow: hidden; cursor: pointer; border: 1px solid #222; }
+        .novel-cover { width: 100%; aspect-ratio: 2/3; object-fit: cover; background: #222; }
+        .novel-info { padding: 10px; text-align: left; }
+        .novel-title { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px; }
+        .novel-count { font-size: 11px; color: var(--accent); font-weight: bold; }
+        .chapter-list { display: flex; flex-direction: column; gap: 8px; }
+        .chapter-item { background: var(--card); padding: 14px; border-radius: 10px; display: flex; align-items: center; cursor: pointer; border: 1px solid #222; }
+        .chap-num { color: var(--accent); font-weight: bold; margin-right: 15px; font-size: 13px; min-width: 35px; }
+        .chap-title { font-size: 14px; flex: 1; color: #e0e0e0; }
+        #loading { text-align: center; margin-top: 50px; color: var(--hint); font-size: 14px; }
     </style>
 </head>
 <body>
-
 <div class="header">
     <button id="backBtn" class="back-btn" onclick="showNovels()">‹</button>
-    <h1 id="viewTitle" class="header-title">Storyline Library</h1>
+    <h1 id="viewTitle" class="header-title">Storyline</h1>
 </div>
-
 <div class="container">
-    <div id="loading">Connecting to Server...</div>
+    <div id="loading">Updating Library...</div>
     <div id="mainContent"></div>
 </div>
-
 <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
-    tg.ready();
+    const API = "https://storylineartstudio.in/wp-json/wp/v2";
+    const PARENT_ID = 14;
 
-    // SETUP
-    const API_BASE = "https://storylineartstudio.in/wp-json/wp/v2";
-    const NOVELS_PARENT_ID = 14; 
-    const FALLBACK_COVER = "https://via.placeholder.com/90x130?text=No+Cover";
-
-    // View: List of Novels
     async function showNovels() {
         document.getElementById('backBtn').style.display = 'none';
         document.getElementById('viewTitle').innerText = "Library";
         const content = document.getElementById('mainContent');
-        content.innerHTML = '';
-        content.className = 'novel-list';
+        content.innerHTML = ''; content.className = 'novel-grid';
         document.getElementById('loading').style.display = 'block';
-
         try {
-            const response = await fetch(`${API_BASE}/categories?parent=${NOVELS_PARENT_ID}&per_page=100`);
-            const novels = await response.json();
+            const res = await fetch(`${API}/categories?parent=${PARENT_ID}&per_page=100`);
+            const novels = await res.json();
             document.getElementById('loading').style.display = 'none';
-            
-            novels.forEach(novel => {
+            novels.forEach(n => {
                 const card = document.createElement('div');
                 card.className = 'novel-card';
-                card.onclick = () => showChapters(novel.id, novel.name);
-                
-                // Get Cover from our custom WP REST API field
-                const coverImg = novel.cover_url ? novel.cover_url : FALLBACK_COVER;
-
-                card.innerHTML = `
-                    <img src="${coverImg}" class="novel-cover" alt="Cover">
-                    <div class="novel-info">
-                        <div class="novel-title">${novel.name}</div>
-                        <div class="novel-meta">${novel.count} Chapters Published</div>
-                    </div>
-                `;
+                card.onclick = () => showChapters(n.id, n.name);
+                const img = n.cover_url || 'https://via.placeholder.com/200x300?text=Novel';
+                card.innerHTML = `<img src="${img}" class="novel-cover"><div class="novel-info"><div class="novel-title">${n.name}</div><div class="novel-count">${n.count} CHS</div></div>`;
                 content.appendChild(card);
             });
-        } catch (e) {
-            document.getElementById('loading').innerText = "Error loading library. Please try again.";
-        }
+        } catch (e) { document.getElementById('loading').innerText = "Connection Error"; }
     }
 
-    // View: List of Chapters for a Novel
-    async function showChapters(novelId, novelName) {
+    async function showChapters(id, name) {
         document.getElementById('backBtn').style.display = 'block';
-        document.getElementById('viewTitle').innerText = novelName;
+        document.getElementById('viewTitle').innerText = name;
         const content = document.getElementById('mainContent');
-        content.innerHTML = '';
-        content.className = 'chapter-list';
+        content.innerHTML = ''; content.className = 'chapter-list';
         document.getElementById('loading').style.display = 'block';
-
         try {
-            // Fetch posts, ordered by date descending (newest top)
-            const response = await fetch(`${API_BASE}/posts?categories=${novelId}&per_page=100`);
-            const chapters = await response.json();
+            const res = await fetch(`${API}/posts?categories=${id}&per_page=100&order=asc`);
+            const chaps = await res.json();
             document.getElementById('loading').style.display = 'none';
-            
-            chapters.forEach(chap => {
+            chaps.forEach(c => {
                 const item = document.createElement('div');
                 item.className = 'chapter-item';
-                // Use tg.openLink to open chapter on user's default browser or TG browser
-                item.onclick = () => tg.openLink(chap.link);
-                
-                // Use the calculated chapter number from our functions.php code
-                const chapNum = chap.chapter_number ? `Ch. ${chap.chapter_number}` : 'Ch.';
-
-                item.innerHTML = `
-                    <div class="chapter-number">${chapNum}</div>
-                    <div class="chapter-title">${chap.title.rendered}</div>
-                `;
+                item.onclick = () => tg.openLink(c.link);
+                const num = c.chapter_number ? `CH ${c.chapter_number}` : 'CH';
+                item.innerHTML = `<span class="chap-num">${num}</span><span class="chap-title">${c.title.rendered}</span>`;
                 content.appendChild(item);
             });
-        } catch (e) {
-            document.getElementById('loading').innerText = "Error loading chapters.";
-        }
+        } catch (e) { document.getElementById('loading').innerText = "Error loading chapters."; }
     }
-
-    // Initialize App
     showNovels();
 </script>
-
-</body>
-</html>
-            novels.forEach(novel => {
-                const card = document.createElement('div');
-                card.className = 'novel-card';
-                card.onclick = () => showChapters(novel.id, novel.name);
-                
-                // Note: Categories don't have featured images by default in WP.
-                // We'll use a placeholder or you can use a plugin to add category images.
-                card.innerHTML = `
-                    <div class="novel-info">
-                        <div class="novel-title">${novel.name}</div>
-                        <div class="novel-meta">${novel.count} Chapters</div>
-                    </div>
-                `;
-                content.appendChild(card);
-            });
-        } catch (e) {
-            document.getElementById('loading').innerText = "Error loading novels. Check CORS settings.";
-        }
-    }
-
-    async function showChapters(novelId, novelName) {
-        document.getElementById('backBtn').style.display = 'block';
-        document.getElementById('viewTitle').innerText = novelName;
-        const content = document.getElementById('mainContent');
-        content.innerHTML = '';
-        document.getElementById('loading').style.display = 'block';
-        content.className = ''; // Remove grid for list view
-
-        try {
-            // Fetch posts in this category
-            const response = await fetch(`${API_BASE}/posts?categories=${novelId}&per_page=50`);
-            const chapters = await response.json();
-            
-            document.getElementById('loading').style.display = 'none';
-            
-            chapters.forEach(chap => {
-                const item = document.createElement('div');
-                item.className = 'chapter-item';
-                item.onclick = () => tg.openLink(chap.link);
-                
-                // Here we use the custom field 'featured_image_url' we added to functions.php
-                const thumb = chap.featured_image_url ? `<img src="${chap.featured_image_url}" style="width:40px;height:40px;border-radius:4px;margin-right:10px;object-fit:cover;">` : '';
-                
-                item.innerHTML = `
-                    <div style="display:flex; align-items:center;">
-                        ${thumb}
-                        <div>${chap.title.rendered}</div>
-                    </div>
-                    <span style="color:var(--link)">Read ↗</span>
-                `;
-                content.appendChild(item);
-            });
-        } catch (e) {
-            document.getElementById('loading').innerText = "Error loading chapters.";
-        }
-    }
-
-    // Initialize
-    showNovels();
-</script>
-
 </body>
 </html>
