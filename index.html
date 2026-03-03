@@ -7,107 +7,185 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg: var(--tg-theme-bg-color, #ffffff);
-            --text: var(--tg-theme-text-color, #222222);
-            --hint: var(--tg-theme-hint-color, #999999);
-            --link: var(--tg-theme-link-color, #248bcf);
-            --secondary-bg: var(--tg-theme-secondary-bg-color, #f4f4f4);
+            /* Adapts to Telegram Theme */
+            --bg: var(--tg-theme-bg-color, #f0f2f5);
+            --text: var(--tg-theme-text-color, #1c1e21);
+            --secondary-bg: var(--tg-theme-secondary-bg-color, #ffffff);
+            --hint: var(--tg-theme-hint-color, #8a8d91);
+            --link: var(--tg-theme-link-color, #1877f2);
+            --border: rgba(0,0,0,0.05);
         }
+        
+        @media (prefers-color-scheme: dark) {
+            :root { --border: rgba(255,255,255,0.05); }
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
             background-color: var(--bg);
             color: var(--text);
             margin: 0;
             padding: 0;
             -webkit-user-select: none;
         }
-        header {
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid var(--secondary-bg);
+
+        /* Header UI */
+        .header {
+            position: sticky;
+            top: 0;
+            background: var(--secondary-bg);
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
+        .back-btn {
+            background: none; border: none; font-size: 24px;
+            color: var(--link); cursor: pointer; display: none; margin-right: 15px;
+        }
+        .header-title { font-size: 18px; font-weight: 600; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Novel List View */
         .container { padding: 15px; }
-        .novel-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
+        .novel-list { display: flex; flex-direction: column; gap: 12px; }
         .novel-card {
             background: var(--secondary-bg);
             border-radius: 12px;
             overflow: hidden;
             display: flex;
-            flex-direction: column;
             cursor: pointer;
+            box-shadow: 0 1px 3px var(--border);
             transition: transform 0.1s;
         }
         .novel-card:active { transform: scale(0.98); }
-        .novel-cover {
-            width: 100%;
-            aspect-ratio: 2/3;
-            object-fit: cover;
-            background: #ddd;
-        }
-        .novel-info { padding: 10px; }
-        .novel-title { font-weight: bold; font-size: 14px; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .novel-meta { font-size: 11px; color: var(--hint); }
+        .novel-cover { width: 90px; height: 130px; object-fit: cover; background: var(--bg); }
+        .novel-info { padding: 12px; display: flex; flex-direction: column; justify-content: center; flex: 1; }
+        .novel-title { font-size: 16px; font-weight: bold; margin-bottom: 6px; }
+        .novel-meta { font-size: 13px; color: var(--hint); }
 
         /* Chapter List View */
+        .chapter-list { display: flex; flex-direction: column; gap: 2px; }
         .chapter-item {
-            padding: 15px;
-            border-bottom: 1px solid var(--secondary-bg);
+            background: var(--secondary-bg);
+            padding: 16px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            text-decoration: none;
-            color: var(--text);
-        }
-        .back-btn {
-            background: none;
-            border: none;
-            color: var(--link);
-            font-size: 16px;
-            padding: 10px 0;
             cursor: pointer;
-            display: none;
         }
-        #loading { text-align: center; padding: 40px; color: var(--hint); }
+        .chapter-item:active { background: var(--bg); }
+        .chapter-number {
+            font-size: 14px; font-weight: bold; color: var(--text);
+            width: 50px; flex-shrink: 0;
+        }
+        .chapter-title {
+            font-size: 14px; color: var(--text); flex: 1;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        #loading { text-align: center; padding: 40px; color: var(--hint); font-size: 14px; }
     </style>
 </head>
 <body>
 
+<div class="header">
+    <button id="backBtn" class="back-btn" onclick="showNovels()">‹</button>
+    <h1 id="viewTitle" class="header-title">Storyline Library</h1>
+</div>
+
 <div class="container">
-    <button id="backBtn" class="back-btn" onclick="showNovels()">⬅ Back to Library</button>
-    <h2 id="viewTitle">Library</h2>
-    
-    <div id="loading">Connecting to Storyline Art Studio...</div>
-    <div id="mainContent" class="novel-grid"></div>
+    <div id="loading">Connecting to Server...</div>
+    <div id="mainContent"></div>
 </div>
 
 <script>
     const tg = window.Telegram.WebApp;
-    tg.expand(); // Opens app to full height
+    tg.expand();
     tg.ready();
 
+    // SETUP
     const API_BASE = "https://storylineartstudio.in/wp-json/wp/v2";
     const NOVELS_PARENT_ID = 14; 
+    const FALLBACK_COVER = "https://via.placeholder.com/90x130?text=No+Cover";
 
-    // View State
+    // View: List of Novels
     async function showNovels() {
         document.getElementById('backBtn').style.display = 'none';
         document.getElementById('viewTitle').innerText = "Library";
         const content = document.getElementById('mainContent');
         content.innerHTML = '';
+        content.className = 'novel-list';
         document.getElementById('loading').style.display = 'block';
-        content.className = 'novel-grid';
 
         try {
-            // Fetch subcategories (Individual Novels)
             const response = await fetch(`${API_BASE}/categories?parent=${NOVELS_PARENT_ID}&per_page=100`);
             const novels = await response.json();
-            
             document.getElementById('loading').style.display = 'none';
             
+            novels.forEach(novel => {
+                const card = document.createElement('div');
+                card.className = 'novel-card';
+                card.onclick = () => showChapters(novel.id, novel.name);
+                
+                // Get Cover from our custom WP REST API field
+                const coverImg = novel.cover_url ? novel.cover_url : FALLBACK_COVER;
+
+                card.innerHTML = `
+                    <img src="${coverImg}" class="novel-cover" alt="Cover">
+                    <div class="novel-info">
+                        <div class="novel-title">${novel.name}</div>
+                        <div class="novel-meta">${novel.count} Chapters Published</div>
+                    </div>
+                `;
+                content.appendChild(card);
+            });
+        } catch (e) {
+            document.getElementById('loading').innerText = "Error loading library. Please try again.";
+        }
+    }
+
+    // View: List of Chapters for a Novel
+    async function showChapters(novelId, novelName) {
+        document.getElementById('backBtn').style.display = 'block';
+        document.getElementById('viewTitle').innerText = novelName;
+        const content = document.getElementById('mainContent');
+        content.innerHTML = '';
+        content.className = 'chapter-list';
+        document.getElementById('loading').style.display = 'block';
+
+        try {
+            // Fetch posts, ordered by date descending (newest top)
+            const response = await fetch(`${API_BASE}/posts?categories=${novelId}&per_page=100`);
+            const chapters = await response.json();
+            document.getElementById('loading').style.display = 'none';
+            
+            chapters.forEach(chap => {
+                const item = document.createElement('div');
+                item.className = 'chapter-item';
+                // Use tg.openLink to open chapter on user's default browser or TG browser
+                item.onclick = () => tg.openLink(chap.link);
+                
+                // Use the calculated chapter number from our functions.php code
+                const chapNum = chap.chapter_number ? `Ch. ${chap.chapter_number}` : 'Ch.';
+
+                item.innerHTML = `
+                    <div class="chapter-number">${chapNum}</div>
+                    <div class="chapter-title">${chap.title.rendered}</div>
+                `;
+                content.appendChild(item);
+            });
+        } catch (e) {
+            document.getElementById('loading').innerText = "Error loading chapters.";
+        }
+    }
+
+    // Initialize App
+    showNovels();
+</script>
+
+</body>
+</html>
             novels.forEach(novel => {
                 const card = document.createElement('div');
                 card.className = 'novel-card';
