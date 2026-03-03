@@ -7,7 +7,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --bg: #0f1014; --card: #1a1c22; --text: #ffffff; --accent: #ff3b5c; --hint: #8e8e93; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 30px; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 90px; }
         .header { position: sticky; top: 0; background: var(--bg); padding: 15px; display: flex; align-items: center; border-bottom: 1px solid #222; z-index: 10; }
         .back-btn { background: none; border: none; font-size: 24px; color: var(--accent); display: none; margin-right: 15px; cursor: pointer; }
         .header-title { font-size: 18px; font-weight: bold; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
@@ -23,6 +23,32 @@
         .chap-num { color: var(--accent); font-weight: bold; margin-right: 15px; font-size: 13px; min-width: 35px; }
         .chap-title { font-size: 14px; flex: 1; color: #e0e0e0; }
         #loading { text-align: center; margin-top: 50px; color: var(--hint); font-size: 14px; }
+        
+        /* New Footer Button Styling */
+        .footer-fixed {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: #16171d;
+            padding: 15px;
+            box-sizing: border-box;
+            border-top: 1px solid #222;
+            display: flex;
+            justify-content: center;
+            z-index: 100;
+        }
+        .btn-main {
+            background: var(--accent);
+            color: #fff;
+            text-decoration: none;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 14px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(255, 59, 92, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -34,6 +60,11 @@
     <div id="loading">Updating Library...</div>
     <div id="mainContent"></div>
 </div>
+
+<div class="footer-fixed">
+    <a href="javascript:void(0)" onclick="tg.openLink('https://storylineartstudio.in')" class="btn-main">🌐 VISIT STORYLINE WEBSITE</a>
+</div>
+
 <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
@@ -71,12 +102,17 @@
             const res = await fetch(`${API}/posts?categories=${id}&per_page=100&order=asc`);
             const chaps = await res.json();
             document.getElementById('loading').style.display = 'none';
-            chaps.forEach(c => {
+            
+            // Loop with Index to create sequential CH 1, CH 2... numbering
+            chaps.forEach((c, index) => {
                 const item = document.createElement('div');
                 item.className = 'chapter-item';
                 item.onclick = () => tg.openLink(c.link);
-                const num = c.chapter_number ? `CH ${c.chapter_number}` : 'CH';
-                item.innerHTML = `<span class="chap-num">${num}</span><span class="chap-title">${c.title.rendered}</span>`;
+                
+                // Index starts at 0, so we add 1 for CH 1, CH 2, etc.
+                const sequentialNum = index + 1;
+                
+                item.innerHTML = `<span class="chap-num">CH ${sequentialNum}</span><span class="chap-title">${c.title.rendered}</span>`;
                 content.appendChild(item);
             });
         } catch (e) { document.getElementById('loading').innerText = "Error loading chapters."; }
